@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+eggs/
+*.egg
+
+# Virtual environments
+venv/
+env/
+.env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Data (large files - download via script)
+data/raw/
+data/processed/
+data/splits/
+*.dcm
+*.dcm.gz
+*.dicom
+
+# Models (large files)
+models/
+*.pt
+*.pth
+*.ckpt
+*.bin
+!data/sample_cases/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+wandb/
+
+# Secrets
+.env
+*.key
