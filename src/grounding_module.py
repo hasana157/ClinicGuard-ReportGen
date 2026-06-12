@@ -286,7 +286,7 @@ if __name__ == "__main__":
     model.eval()
     
     grounding = GradCAMGrounding(model)
-    dummy_input = torch.randn(1, 1, 224, 224)
+    dummy_input = torch.randn(1, 3, 224, 224)
     heatmap = grounding.generate_heatmap(dummy_input, 1)  # Cardiomegaly
     print(f"Heatmap shape: {heatmap.shape}")
     print(f"Heatmap range: [{heatmap.min():.2f}, {heatmap.max():.2f}]")

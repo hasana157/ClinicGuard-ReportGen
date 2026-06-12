@@ -1,117 +1,86 @@
-# CLINICAL HALLUCINATION ANALYSIS IN AUTOMATED RADIOLOGY REPORTING
+# Hallucination Analysis
 
-**Prepared by:** Candidate  
-**Submission for:** ITSOLERA PVT LTD (Internship Screening Evaluation)  
-**Date:** June 10, 2026  
+This note explains how ClinicGuard ReportGen defines, reduces, and audits unsupported
+claims in generated radiology-style reports.
 
----
+The project is a prototype. The included numbers are sample-artifact checks unless they
+are regenerated from a documented evaluation run.
 
-## 1. Introduction: The Hallucination Problem in Medical AI
+## 1. Why Hallucination Control Matters
 
-Generative artificial intelligence has shown remarkable capabilities in natural language generation, yet its application in medical imaging remains severely restricted. The primary bottleneck is **clinical hallucination**—the generation of sentences that are either factually incorrect or unsupported by the visual evidence. Unlike general text generation where minor inaccuracies are tolerable, medical hallucinations can lead directly to clinical errors, incorrect treatments, and compromised patient safety.
+In medical report generation, a hallucination is a clinically meaningful statement that is
+not supported by the available evidence. In this project, evidence can come from:
 
-This analysis details the types of hallucinations observed in medical VLMs, our methods for detecting and measuring them, and the engineering strategies deployed in our pipeline to achieve a **3.2% hallucination rate**.
+- the image classifier confidence score,
+- a Grad-CAM image region,
+- structured patient history supplied by the user,
+- a prior report supplied by the user.
 
----
+The system is designed to make unsupported claims visible rather than hiding them inside
+fluent prose.
 
-## 2. Taxonomy of Medical AI Hallucinations
+## 2. Hallucination Types
 
-We classify hallucinations in radiology report generation into four distinct categories:
+Common failure modes include:
 
-```
-                  +---------------------------------------+
-                  |  Radiology Hallucination Categories  |
-                  +---------------------------------------+
-                     /          |            |          \
-                    /           |            |           \
-                   v            v            v            v
-            +------------+ +------------+ +------------+ +------------+
-            | Fabricated | | Anatomical | | Negation   | | Severity   |
-            | Findings   | | Shift      | | Inversion  | | Distortion |
-            +------------+ +------------+ +------------+ +------------+
-```
+- Fabricated finding: reporting a pathology that is not supported by image evidence.
+- Anatomical shift: assigning a finding to the wrong region or side.
+- Negation inversion: turning "no pneumothorax" into "pneumothorax present."
+- Severity distortion: overstating the size or severity of a finding.
+- Source mismatch: using patient history or prior text as if it were current visual
+  evidence.
 
-### 2.1 Fabricated Findings (Type I)
-The model reports a pathology that is entirely absent. For example, generating "A pneumothorax is identified in the right lung apex" when the lung is fully expanded. This typically happens because the model associates certain language patterns (e.g. associating "shortness of breath" in the patient history with "pneumothorax" in the training corpus).
+## 3. Mitigation Strategy
 
-### 2.2 Anatomical Shift / Location Error (Type II)
-The model correctly identifies a finding but assigns it to the wrong lung field, lobe, or anatomical landmark. For example, identifying an effusion on the left side but writing "Right pleural effusion."
+ClinicGuard uses three controls:
 
-### 2.3 Negation Inversion (Type III)
-The model fails to handle medical negation correctly, stating that a condition is present when the raw text says it is absent. For instance, converting "No focal consolidation is seen" into "Focal consolidation is seen" due to token drop-out or poor attention weights.
+1. Confidence-gated findings: low-confidence findings are omitted or hedged.
+2. Template-based generation: report text is assembled from controlled clinical phrases.
+3. Evidence logging: generated claims are linked back to a source reference and checked
+   after generation.
 
-### 2.4 Severity Distortion (Type IV)
-The model exaggerates or minimizes the clinical severity. For example, reporting "large pleural effusion" when only minor blunting of the costophrenic angles is present.
+This does not guarantee clinical correctness, but it does make unsupported output easier
+to detect and review.
 
----
+## 4. Sample Evidence Check
 
-## 3. Grounding & Mitigation Strategies
+The bundled `reports/GROUNDING_EVIDENCE_LOG.csv` contains 10 sample claim rows. One row is
+marked as hallucinated and uses an `UNGROUNDED` source reference. From this sample artifact:
 
-Our system deploys three concentric layers of defense to mitigate these hallucinations:
+| Sample Measure | Value |
+| --- | ---: |
+| Claim rows | 10 |
+| Flagged hallucinated rows | 1 |
+| Sample hallucination flag rate | 10% |
+| Rows with non-ungrounded source references | 9 |
+| Sample grounded-reference rate | 90% |
 
-```
-Input X-Ray Image
-      |
-      v
-  +-----------------------------------------------------+
-  | Layer 1: Classification-Templates (Zero-Gen)       | -> Enforces that only model-classified
-  |                                                     |    pathologies are reportable.
-  +-----------------------------------------------------+
-      |
-      v
-  +-----------------------------------------------------+
-  | Layer 2: Confidence-Based Refusal Gates             | -> Omit borderline findings (p < 0.50)
-  |                                                     |    to prevent false positives.
-  +-----------------------------------------------------+
-      |
-      v
-  +-----------------------------------------------------+
-  | Layer 3: Post-Gen Claim Verification                | -> Verifies report sentences against
-  |                                                     |    original classification scores.
-  +-----------------------------------------------------+
-      |
-      v
-Grounded, Low-Hallucination Report
-```
+These values are useful for demonstrating the audit format. They are not a clinical
+performance benchmark.
 
-### 3.1 Layer 1: Deterministic Template Mapping
-By utilizing predefined, clinically validated templates instead of free-text autoregressive decoding, we eliminate vocabulary hallucinations. The model is constrained to only output phrases representing classifications that have been calculated directly from the image.
+## 5. Recommended Evaluation Standard
 
-### 3.2 Layer 2: Double-Threshold Refusal Gates
-Many hallucinations occur when models are forced to make binary decisions on borderline cases. We implement a refusal mechanism:
-- If prediction probability $p < 0.50$, the finding is completely omitted.
-- If $0.50 \le p < 0.75$, the finding is reported with uncertainty markers ("may represent...", "recommend correlation...").
-- If $p \ge 0.75$, the finding is reported as present.
+A credible benchmark should save:
 
-### 3.3 Layer 3: Post-Generation Claim Verification
-The `HallucinationDetector` acts as a final safety check. It splits the generated report into sentences, parses them to extract pathology keywords, and verifies that the visual classification probability supports that statement. Any mismatch results in a flagged claim.
+- sample IDs,
+- source images or stable image references,
+- ground-truth labels,
+- model confidence scores,
+- generated reports,
+- evidence logs,
+- hallucination flags,
+- exact command and configuration used for the run.
 
----
+Without those artifacts, precision, recall, grounding, and hallucination metrics should be
+described as examples rather than final performance claims.
 
-## 4. Quantitative Analysis
+## 6. Practical Review Checklist
 
-### 4.1 Evaluation Setup
-We compiled a test database of 100 chest X-ray samples. We compared our system against an unconstrained sequence-to-sequence baseline (ResNet50 + LSTM) trained on the same data.
+When reviewing generated output:
 
-### 4.2 Error Distribution Comparison
-An analysis of the flagged errors reveals that the constrained architecture reduces fabricated findings and negation errors to near-zero:
-
-| Error Category | Baseline VLM Errors (N=100) | Our System Errors (N=100) | Mitigation Source |
-|----------------|----------------------------|---------------------------|-------------------|
-| Fabricated Finding | 22 | 2 | Refusal Gate ($\tau \ge 0.50$) |
-| Anatomical Shift | 8 | 1 | Grad-CAM Localizer |
-| Negation Inversion | 4 | 0 | Deterministic Templates |
-| Severity Distortion | 6 | 1 | Double-Threshold Hedge |
-| **Total Errors** | **40** | **4** | **3.2% Hallucination Rate** |
-
-### 4.3 Key Results Visualization
-The composite evaluation score rewards precision and recall while penalizing hallucinations heavily:
-$$\text{Composite} = (\text{Precision} \times \text{Recall}) - (5 \times \text{Hallucination Rate})$$
-
-Our model scores **0.780** compared to the baseline VLM score of **-0.999** (due to the 34% hallucination penalty). This shows the critical importance of factuality weighting in medical benchmarks.
-
----
-
-## 5. Conclusion & Recommendations
-
-Clinical hallucinations are not an unavoidable side-effect of medical AI; they are a consequence of unconstrained autoregressive language models. By framing report generation as a **grounded classification-template assembly** task, we can build radiology assistants that are explainable, safety-gated, and clinically viable today. We recommend that future medical AI frameworks adopt strict penalty-weighted evaluation metrics like our composite score to align model incentives with patient safety.
+- Check every positive finding has either a grounded visual source or an explicitly named
+  non-visual source.
+- Check absent findings are not contradicted by high-confidence positive predictions.
+- Check hedged findings are not presented as certain in the impression.
+- Check prior-report language is not copied as a current image finding.
+- Check each evidence row has a useful `source_reference`.

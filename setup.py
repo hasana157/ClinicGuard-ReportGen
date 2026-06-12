@@ -7,13 +7,13 @@ with open("requirements.txt", "r", encoding="utf-8") as fh:
     requirements = [line.strip() for line in fh if line.strip() and not line.startswith("#")]
 
 setup(
-    name="medical-report-generation",
+    name="clinicguard-reportgen",
     version="1.0.0",
-    author="Medical AI Research",
-    description="Zero-hallucination medical report generation with grounded evidence",
+    author="ClinicGuard ReportGen contributors",
+    description="Evidence-grounded radiology report generation research prototype",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/YourUsername/medical-report-generation",
+    url="https://github.com/hasana157/ClinicGuard-ReportGen",
     packages=find_packages(),
     python_requires=">=3.9",
     install_requires=requirements,

@@ -61,5 +61,11 @@ def grounding_accuracy(evidence_log: List[Dict[str, Any]]) -> float:
     """Calculate grounding accuracy (percentage of claims verified by visual or metadata)."""
     if not evidence_log:
         return 1.0
-    grounded = sum(1 for item in evidence_log if item.get("source_type") in ["visual", "history", "prior"])
+    grounded = sum(
+        1
+        for item in evidence_log
+        if item.get("source_type") in ["visual", "history", "prior"]
+        and item.get("source_reference") not in ["UNGROUNDED", "", None]
+        and not item.get("hallucinated", False)
+    )
     return grounded / len(evidence_log)

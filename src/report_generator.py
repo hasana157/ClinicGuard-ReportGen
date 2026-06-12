@@ -1,7 +1,7 @@
 """
 Constrained report generation engine.
 
-Executes the zero-hallucination report generation pipeline: runs the vision encoder,
+Executes the hallucination-aware report generation pipeline: runs the vision encoder,
 applies the confidence-based refusal mechanism, triggers visual grounding per finding,
 builds the structured report, compiles the evidence log (CSV formatting), and returns
 the final report outputs.

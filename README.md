@@ -1,52 +1,67 @@
-# Medical Report Generation with Zero-Hallucination Constraints
+# ClinicGuard ReportGen
 
-**Status:** Internship Screening Submission (ITSOLERA PVT LTD)  
-**Deadline Met:** ✅ June 12, 2026, 11:59 PM PKT  
+Evidence-grounded radiology report generation prototype with claim-level verification,
+source traceability, controlled refusal for unsupported findings, and penalty-weighted
+evaluation utilities.
 
----
+This repository is a research and engineering prototype. It is not a clinical product,
+does not claim diagnostic accuracy, and should not be used for patient care.
 
-## Overview
+## What It Solves
 
-A grounded medical report generation system that produces radiology reports from multimodal inputs (imaging, patient history, priors) while maintaining **zero tolerance for hallucinations**. Every clinical claim is explicitly traced to source evidence (image region, structured data, or prior report).
+- Reduces unsupported report text by generating from confidence-gated templates instead
+  of unconstrained free text.
+- Links generated claims to evidence sources such as image regions, patient history, or
+  prior report text.
+- Refuses or hedges findings when model confidence is below configurable thresholds.
+- Produces CSV evidence logs so outputs can be audited claim by claim.
+- Provides a Streamlit demo, command-line inference, evaluation helpers, and sample data
+  for local experimentation.
 
-### Key Features
-- ✅ **Vision-language grounding:** All claims linked to image regions via attention
-- ✅ **Controlled refusal:** Abstains from generating unsupported claims
-- ✅ **Hallucination detection:** Post-generation factuality verification
-- ✅ **Evidence logging:** Every claim comes with traced source
-- ✅ **Penalty-weighted evaluation:** Hallucinations penalize more than missed findings
+## Current Scope
 
-### Results
-| Metric | Score |
-|--------|-------|
-| Hallucination Rate | 3.2% |
-| Grounding Success | 96.8% |
-| Precision | 0.92 |
-| Recall | 0.88 |
-| **Composite Score** | **0.78** |
+The runnable path uses an IU X-Ray style workflow and local sample cases. The MIMIC-CXR
+and PadChest loaders are documented as access-controlled extensions because those datasets
+require external approvals. If model weights or external datasets are unavailable, parts
+of the app and loaders intentionally fall back to sample/demo behavior so the project can
+still be inspected offline.
 
----
+The included `reports/GROUNDING_EVIDENCE_LOG.csv` is a small sample evidence log with
+10 claim-level rows. The included benchmark CSV is a sample artifact, not a clinical
+benchmark claim.
 
 ## Quick Start
 
-### Installation
 ```bash
-git clone https://github.com/YourUsername/medical-report-generation
-cd medical-report-generation
+git clone https://github.com/hasana157/ClinicGuard-ReportGen.git
+cd ClinicGuard-ReportGen
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Download Datasets
-```bash
-python scripts/download_datasets.py --iu-xray
+On Windows PowerShell:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
 ```
 
-### Train Model
+Generate or refresh the bundled sample cases:
+
 ```bash
-python scripts/train.py --epochs 10 --batch-size 8 --lr 1e-4
+python scripts/generate_sample_data.py
 ```
 
-### Generate Reports
+Run the web demo:
+
+```bash
+streamlit run app.py
+```
+
+Run inference on a sample X-ray:
+
 ```bash
 python scripts/inference.py \
   --image data/sample_cases/chest_xray.png \
@@ -55,138 +70,127 @@ python scripts/inference.py \
   --output results/
 ```
 
-### Launch Web Demo
+## Main Workflows
+
+### Download Public Sample Dataset
+
 ```bash
-streamlit run app.py
+python scripts/download_datasets.py --iu-xray
 ```
 
----
+For MIMIC-CXR or PadChest, use:
+
+```bash
+python scripts/download_datasets.py --mimic
+python scripts/download_datasets.py --padchest
+```
+
+Those commands print access instructions instead of pretending the protected datasets can
+be downloaded automatically.
+
+### Train
+
+```bash
+python scripts/train.py --epochs 10 --batch-size 8 --lr 1e-4
+```
+
+### Evaluate
+
+```bash
+python scripts/evaluate.py --num-samples 10 --output-dir evaluation/
+```
+
+Evaluation writes:
+
+- `evaluation/benchmark_results.csv`
+- `reports/GROUNDING_EVIDENCE_LOG.csv`
+- sample generated reports and grounding overlays under `evaluation/sample_outputs/`
 
 ## Architecture
 
 ```mermaid
 graph TD
-    A["Input: Chest X-Ray Image"] --> B["Vision Encoder<br/>DenseNet121 (torchxrayvision)<br/>Pre-trained on CheXpert/MIMIC"]
-    B --> C["Feature Extraction<br/>Global: 1024-d vector<br/>Spatial: 7×7×1024 map"]
-    C --> D["Classification Head<br/>14-18 Pathology Labels<br/>+ Confidence Scores"]
-    C --> E["Grad-CAM Module<br/>Region Attribution<br/>Per-Finding Heatmaps"]
-    D --> F["Confidence Filter<br/>Threshold: 0.5<br/>Refusal for low confidence"]
-    F --> G["Template-Based Report Generator<br/>Constrained Decoding<br/>Clinically-Validated Templates"]
-    E --> G
-    G --> H["Hallucination Detector<br/>Claim ↔ Evidence Verification"]
-    H --> I["Output:<br/>1. Medical Report<br/>2. Evidence Log (CSV)<br/>3. Grad-CAM Heatmaps"]
-    
-    J["Patient History<br/>(Optional JSON)"] --> G
-    K["Prior Report<br/>(Optional Text)"] --> G
+    A["Chest X-ray image"] --> B["DenseNet121 vision encoder"]
+    B --> C["Pathology confidence scores"]
+    C --> D["Refusal and uncertainty gates"]
+    D --> E["Template report builder"]
+    C --> F["Grad-CAM visual grounding"]
+    F --> E
+    E --> G["Claim verification"]
+    G --> H["Report + evidence log"]
+    I["Optional patient history"] --> E
+    J["Optional prior report"] --> E
 ```
-
-### Vision Encoder
-- **Backbone:** DenseNet121 (pre-trained on CheXpert/MIMIC via `torchxrayvision`)
-- **Output:** Global features (1024-d) + spatial feature map (7×7×1024)
-- **Parameters:** 7.5M (fits on 4GB GPU)
-
-### Grounding Module
-- **Method:** Attention-based region attribution
-- **Algorithm:** Grad-CAM for interpretability
-- **Output:** Bounding boxes + confidence scores for each claim
-
-### Language Model / Generation
-- **Method:** Clinically validated finding templates
-- **Decoding:** Constrained selection with refusal gates
-- **Evidence matching:** Semantic similarity & keyword alignment
-
----
-
-## Evaluation Metrics
-
-### 1. Hallucination Rate
-```
-Hallucinations / Total Claims = 3.2%
-```
-
-### 2. Grounding Success
-```
-Claims with valid source evidence / Total claims = 96.8%
-```
-
-### 3. Finding Recall
-```
-True findings reported / All true findings = 0.88
-```
-
-### 4. Composite Score
-```
-(Precision × Recall) - (5 × Hallucination_Rate) = 0.78
-```
-**Note:** Hallucinations penalized 5× more than missed findings (medical safety priority)
-
----
 
 ## Project Structure
-```
-medical-report-generation/
-├── app.py             # Streamlit Demo Web UI
-├── requirements.txt   # Dependencies
-├── setup.py           # Installable package setup
-├── LICENSE            # MIT License
-├── .gitignore         # Exclusions
-│
-├── src/               # Core source code
-│   ├── config.py                 # Hyperparameters & paths
-│   ├── data_loader.py            # IU X-Ray data loaders
-│   ├── preprocessing.py          # Normalization & text cleaning
-│   ├── vision_encoder.py         # DenseNet121 feature extractor
-│   ├── grounding_module.py       # Grad-CAM region mapping
-│   ├── report_generator.py       # Constrained generation pipeline
-│   ├── report_templates.py       # Clinically-validated templates
-│   ├── hallucination_detector.py # Post-generation verification
-│   └── uncertainty_quantifier.py # MC dropout uncertainty
-│
-├── scripts/           # Command line interfaces
-│   ├── download_datasets.py      # Automated data acquisition
-│   ├── train.py                  # Model training CLI
-│   ├── inference.py              # Report generator CLI
-│   └── evaluate.py               # Benchmarking CLI
-│
-├── notebooks/         # Jupyter notebook walkthroughs
-│   ├── 01_exploratory_analysis.ipynb
-│   ├── 02_data_preprocessing.ipynb
-│   ├── 03_model_training.ipynb
-│   └── 04_inference_grounding.ipynb
-│
-├── evaluation/        # Results & metrics
-│   ├── metrics.py                # Standalone metrics functions
-│   ├── benchmark_results.csv     # Quantified performance metrics
-│   └── sample_outputs/           # Generated sample reports & overlays
-│
-└── reports/           # Technical submissions
-    ├── GROUNDING_EVIDENCE_LOG.csv # 500+ claims traced to sources
-    └── TECHNICAL_REPORT.pdf      # Detailed design document
+
+```text
+ClinicGuard-ReportGen/
+|-- app.py                         # Streamlit demo
+|-- requirements.txt               # Python dependencies
+|-- setup.py                       # Package metadata
+|-- src/
+|   |-- config.py                  # Paths, labels, thresholds
+|   |-- data_loader.py             # IU X-Ray loader and protected dataset stubs
+|   |-- preprocessing.py           # Image and report preprocessing
+|   |-- vision_encoder.py          # DenseNet121 feature extractor
+|   |-- grounding_module.py        # Grad-CAM heatmaps and boxes
+|   |-- report_generator.py        # Constrained generation pipeline
+|   |-- report_templates.py        # Report templates
+|   |-- hallucination_detector.py  # Claim verification
+|   |-- uncertainty_quantifier.py  # MC dropout uncertainty helpers
+|   |-- evaluation.py              # Evaluation suite
+|-- scripts/
+|   |-- download_datasets.py       # Dataset access helpers
+|   |-- generate_sample_data.py    # Local sample data generation
+|   |-- train.py                   # Training CLI
+|   |-- inference.py               # Inference CLI
+|   |-- evaluate.py                # Evaluation CLI
+|   |-- generate_pdfs.py           # Markdown-to-PDF report generation
+|-- data/sample_cases/             # Small local sample inputs
+|-- evaluation/                    # Sample benchmark artifacts
+|-- reports/                       # Technical notes and sample evidence log
+|-- notebooks/                     # Exploratory walkthroughs
 ```
 
----
+## Evidence Log Format
 
-## Reproducibility
+Each generated claim is recorded with:
 
-All results are reproducible with:
-```bash
-python scripts/train.py --seed 42 --epochs 15
-python scripts/evaluate.py --num-samples 100 --output-dir evaluation/
+- `sample_id`
+- `generated_claim`
+- `source_type`
+- `source_reference`
+- `confidence_score`
+- `hallucinated`
+
+Example:
+
+```csv
+sample_id,generated_claim,source_type,source_reference,confidence_score,hallucinated
+001,Cardiomegaly present,visual,image_region_bbox:[100,150,250,300],0.94,False
 ```
 
-**GPU Requirement:** 4GB VRAM (tested on NVIDIA T4, Google Colab, and Windows WSL)
+## Resolved Cleanup Items
 
----
+- Replaced placeholder clone instructions with the real repository URL.
+- Removed stale external-context wording from public documentation.
+- Reframed metrics as sample artifacts unless produced by a reproducible evaluation run.
+- Clarified that the bundled evidence log has 10 sample rows, not hundreds of claims.
+- Added the missing OpenCV dependency required by visual grounding.
+- Fixed missing runtime imports in CLI scripts.
+- Updated package metadata to match the repository name and URL.
 
-## Limitations & Future Work
+## Limitations
 
-- **Current:** Tested on 800 samples (MIMIC-CXR 500, PadChest 200, OpenPath 100 stubs, IU X-Ray primary)
-- **Future:** Multi-GPU training, larger LMs, clinical validation with radiologists, and longitudinal comparison graphs.
+- This is a prototype for grounded report-generation workflows, not a validated diagnostic
+  system.
+- Grad-CAM localization is an interpretability aid, not expert segmentation.
+- The default local flow uses sample/IU-style data. Protected datasets require external
+  approval and manual setup.
+- Demo fallback outputs are for UI inspection when model weights or dependencies are not
+  available.
 
----
+## License
 
-## Contact
-
-**Submission for:** ITSOLERA PVT LTD | Generative AI Internship  
-**Applicant:** Candidate  
-**Date:** June 12, 2026
+MIT License. See `LICENSE`.

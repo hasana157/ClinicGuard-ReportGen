@@ -6,6 +6,7 @@ reports/HALLUCINATION_ANALYSIS.pdf. If not, outputs a warning and instructions.
 """
 
 import os
+import re
 import sys
 
 # Add project root to path
@@ -175,7 +176,6 @@ def generate_pdf_from_md(md_path: str, pdf_path: str):
 
 
 def main():
-    import re
     # Resolve paths
     tech_md = os.path.join(REPORTS_DIR, "TECHNICAL_REPORT.md")
     tech_pdf = os.path.join(REPORTS_DIR, "TECHNICAL_REPORT.pdf")
@@ -188,5 +188,4 @@ def main():
 
 
 if __name__ == "__main__":
-    import re
     main()

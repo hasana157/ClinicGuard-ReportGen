@@ -2,7 +2,7 @@
 Medical report evaluation module.
 
 Computes precision, recall, and F1 metrics for clinical findings, text similarity metrics
-(BLEU, ROUGE), and the custom zero-hallucination penalty-weighted composite score.
+(BLEU, ROUGE), and a hallucination-penalty-weighted composite score.
 """
 
 import numpy as np
@@ -61,7 +61,7 @@ class MedicalReportEvaluator:
         Returns:
             EvaluationResults object.
         """
-        # 1. Primary Zero-Hallucination Metrics
+        # 1. Primary hallucination-aware metrics
         hallucination_rate = self.compute_hallucination_rate(evidence_logs)
         grounding_success = self.compute_grounding_success(evidence_logs)
         
@@ -103,7 +103,13 @@ class MedicalReportEvaluator:
         """Calculate percentage of claims successfully grounded to valid evidence."""
         if not evidence_logs:
             return 1.0
-        grounded = sum(1 for e in evidence_logs if e.get("source_type") in ["visual", "history", "prior"])
+        grounded = sum(
+            1
+            for e in evidence_logs
+            if e.get("source_type") in ["visual", "history", "prior"]
+            and e.get("source_reference") not in ["UNGROUNDED", "", None]
+            and not e.get("hallucinated", False)
+        )
         return grounded / len(evidence_logs)
 
     def compute_finding_metrics(self, y_pred: np.ndarray, y_true: np.ndarray) -> Dict[str, Any]:

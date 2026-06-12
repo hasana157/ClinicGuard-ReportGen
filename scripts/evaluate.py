@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 import torch
 from tqdm import tqdm
+from PIL import Image
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -168,7 +169,7 @@ def main():
     os.makedirs(reports_dir, exist_ok=True)
     evidence_path = os.path.join(reports_dir, "GROUNDING_EVIDENCE_LOG.csv")
     pd.DataFrame(all_evidence_logs).to_csv(evidence_path, index=False)
-    print(f"Saved full grounding evidence log (500+ rows template if large enough) to: {evidence_path}")
+    print(f"Saved grounding evidence log with {len(all_evidence_logs)} rows to: {evidence_path}")
 
 
 if __name__ == "__main__":

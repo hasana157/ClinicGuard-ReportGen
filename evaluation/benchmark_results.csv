@@ -1,10 +1,8 @@
-Metric,Value
-Hallucination Rate,0.032
-Grounding Success Rate,0.968
-Precision,0.92
-Recall,0.88
-Composite Score,0.78
-BLEU,0.34
-ROUGE-1,0.48
-ROUGE-2,0.22
-ROUGE-L,0.44
+Metric,Value,Notes
+Sample Claim Rows,10,reports/GROUNDING_EVIDENCE_LOG.csv
+Flagged Hallucination Claims,1,sample evidence log
+Sample Hallucination Flag Rate,0.10,1 flagged row out of 10 sample rows
+Sample Grounded Reference Rate,0.90,9 rows with non-ungrounded source references
+Precision,not_reported,requires a labeled benchmark run
+Recall,not_reported,requires a labeled benchmark run
+Composite Score,not_reported,requires a labeled benchmark run

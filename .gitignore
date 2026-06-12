@@ -50,3 +50,6 @@ wandb/
 # Secrets
 .env
 *.key
+
+# Local nested clone / duplicate checkout
+ClinicGuard-ReportGen/

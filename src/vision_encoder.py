@@ -207,7 +207,7 @@ def load_pretrained_encoder(config: Optional[ProjectConfig] = None) -> GroundedV
 if __name__ == "__main__":
     # Test encoder forward pass
     encoder = GroundedVisionEncoder()
-    mock_input = torch.randn(2, 1, 224, 224)
+    mock_input = torch.randn(2, 3, 224, 224)
     out = encoder(mock_input)
     print(f"Logits shape: {out['logits'].shape}")
     print(f"Probabilities shape: {out['probabilities'].shape}")

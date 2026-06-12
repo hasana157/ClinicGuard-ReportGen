@@ -26,7 +26,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 # ============================================================================
 
 st.set_page_config(
-    page_title="Medical Report AI — Zero-Hallucination Radiology",
+    page_title="Medical Report AI - Evidence-Grounded Radiology",
     page_icon="🏥",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -443,7 +443,7 @@ def main():
     st.markdown("""
     <div class="main-header">
         <h1>🏥 Medical Report AI</h1>
-        <p>Zero-hallucination radiology report generation with grounded visual evidence</p>
+        <p>Evidence-grounded radiology report generation with visual audit trails</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -758,14 +758,14 @@ def main():
         <div class="metric-card">
             <div style="font-size: 2rem; margin-bottom: 0.5rem;">🛡️</div>
             <div style="color: #a8edea; font-weight: 600; margin-bottom: 0.3rem;">Hallucination Guard</div>
-            <div style="color: rgba(255,255,255,0.5); font-size: 0.8rem;">Factuality verification<br>Evidence cross-referencing<br>Zero-tolerance policy</div>
+            <div style="color: rgba(255,255,255,0.5); font-size: 0.8rem;">Factuality verification<br>Evidence cross-referencing<br>Claim-level audit</div>
         </div>
         """, unsafe_allow_html=True)
     
     # Footer
     st.markdown("""
     <div style="text-align: center; padding: 2rem 0; color: rgba(255,255,255,0.2); font-size: 0.8rem;">
-        Medical Report AI v1.0.0 | Zero-Hallucination Radiology Report Generation<br>
+        Medical Report AI v1.0.0 | Evidence-Grounded Radiology Report Generation<br>
         ⚠️ This tool is for research/educational purposes only. Not for clinical diagnosis.
     </div>
     """, unsafe_allow_html=True)
