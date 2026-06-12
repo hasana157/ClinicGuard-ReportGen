@@ -2,11 +2,8 @@
 
 **Evidence-grounded radiology report generation with claim-level verification and source traceability**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![Research Prototype](https://img.shields.io/badge/status-Research%20Prototype-orange.svg)](#limitations)
-
-> **⚠️ Important:** This is a research prototype for grounded report-generation workflows. It is **not a clinical product**, does not provide diagnostic accuracy, and should not be used for patient care.
 
 ---
 
@@ -468,6 +465,3 @@ MIT License – see [LICENSE](LICENSE) for details.
 
 ---
 
-**Last Updated:** June 2024  
-**Status:** Active Development  
-**Maintainer:** [Your Name / Organization]
