@@ -28,14 +28,15 @@ The project focuses on three practical issues:
 
 ## 3. Dataset Used
 
-The repository is designed for IU X-Ray style chest radiograph data and includes local sample cases for offline testing. It also documents access paths for protected datasets without bundling restricted data.
+The repository is configured around protected target datasets while still supporting local sample cases and a free IU X-Ray fallback for offline testing. Restricted medical datasets are not bundled.
 
 | Dataset / Source | Use in Project | Notes |
 | --- | --- | --- |
+| MIMIC-CXR | Primary target training/evaluation path | Configure `MIMIC_CXR_PATH` or `config.data.mimic_cxr_path` after PhysioNet approval. |
+| PadChest | Alternative target training/evaluation path | Configure `PADCHEST_PATH` or `config.data.padchest_path` after BIMCV approval. |
+| IU X-Ray | Free fallback/demo path | Use `--dataset IU-XRAY`; HuggingFace loading has a mock fallback for offline smoke tests. |
 | Local sample cases | Immediate offline dashboard and artifact testing | Stored under `data/sample_cases/`. |
-| IU X-Ray style data | Intended public report-generation benchmark path | `src/data_loader.py` attempts HuggingFace IU X-Ray loading and has a mock fallback. |
 | MIMIC-CXR / CheXpert weights | Used indirectly through torchxrayvision DenseNet weights when available | Model weights are for feature initialization, not proof of local clinical validation. |
-| MIMIC-CXR / PadChest datasets | Mentioned as protected evaluation targets | Require approval and local credentialed setup. |
 
 The current report metrics are generated from an offline sample audit with 75 claim-level rows. These metrics demonstrate pipeline behavior and deliverable format; they are not claimed as a clinical benchmark.
 
@@ -98,7 +99,7 @@ The training entry point is `scripts/train.py`; configuration values are central
 
 The intended training loop is:
 
-1. Load image/report pairs through `IUXRayDataset`.
+1. Load image/report pairs through `MedicalReportDataset` with `--dataset MIMIC-CXR`, `--dataset PADCHEST`, or `--dataset IU-XRAY`.
 2. Extract labels from report text using pathology synonyms.
 3. Apply preprocessing and batching.
 4. Fine-tune the DenseNet-based classifier.
@@ -233,13 +234,14 @@ python scripts/generate_report_artifacts.py
 Run the benchmark script when approved data and checkpoints are available:
 
 ```bash
-python scripts/evaluate.py --num-samples 50 --output-dir evaluation/
+python scripts/evaluate.py --dataset MIMIC-CXR --num-samples 50 --output-dir evaluation/
 ```
 
 ## 14. Limitations and Future Work
 
 - The included metrics are an offline sample audit, not a clinical benchmark.
-- Protected datasets require manual approval and local setup.
+- Primary target datasets are MIMIC-CXR and PadChest, and both require manual approval and local setup.
+- IU X-Ray is an explicit free fallback for smoke tests, not a substitute for protected-dataset benchmark claims.
 - Grad-CAM regions are explanatory approximations, not radiologist segmentation labels.
 - The app can fall back to demo mode if the fine-tuned checkpoint is not present.
 - Template-based generation is safer and more auditable than open-ended prose, but less expressive.

@@ -23,7 +23,7 @@ from typing import Dict, List, Optional, Tuple
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.config import get_config, ProjectConfig, PATHOLOGY_LABELS
-from src.data_loader import get_dataloaders
+from src.data_loader import SUPPORTED_DATASETS, get_dataloaders, normalize_dataset_name
 from src.preprocessing import get_train_transforms, get_eval_transforms, binarize_labels
 from src.vision_encoder import GroundedVisionEncoder
 
@@ -146,6 +146,19 @@ def main():
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu", help="Device to train on")
     parser.add_argument("--freeze", action="store_true", help="Freeze backbone weights")
+    parser.add_argument(
+        "--dataset",
+        type=normalize_dataset_name,
+        default=None,
+        choices=SUPPORTED_DATASETS,
+        help="Dataset to train on: MIMIC-CXR, PADCHEST, or IU-XRAY",
+    )
+    parser.add_argument(
+        "--sample-limit",
+        type=int,
+        default=None,
+        help="Optional per-split sample limit for smoke tests",
+    )
     
     args = parser.parse_args()
     
@@ -156,6 +169,7 @@ def main():
     config.training.batch_size = args.batch_size
     config.training.seed = args.seed
     config.vision.freeze_backbone = args.freeze
+    selected_dataset = args.dataset or normalize_dataset_name(config.data.primary_dataset)
     
     os.makedirs(config.training.checkpoint_dir, exist_ok=True)
     os.makedirs(config.evaluation.checkpoint_dir if hasattr(config.evaluation, 'checkpoint_dir') else config.training.checkpoint_dir, exist_ok=True)
@@ -171,11 +185,16 @@ def main():
     
     train_loader, val_loader, _ = get_dataloaders(
         config=config,
+        dataset_name=selected_dataset,
         train_transform=train_transform,
-        eval_transform=eval_transform
+        eval_transform=eval_transform,
+        sample_limit=args.sample_limit,
     )
     
-    print(f"Dataset Loaded. Train batches: {len(train_loader)}, Val batches: {len(val_loader)}")
+    print(
+        f"Dataset Loaded ({selected_dataset}). "
+        f"Train batches: {len(train_loader)}, Val batches: {len(val_loader)}"
+    )
     
     # 3. Create Model
     model = GroundedVisionEncoder(config=config.vision)

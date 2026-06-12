@@ -19,7 +19,7 @@ from PIL import Image
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.config import get_config, ProjectConfig, PATHOLOGY_LABELS
-from src.data_loader import IUXRayDataset
+from src.data_loader import MedicalReportDataset, SUPPORTED_DATASETS, normalize_dataset_name
 from src.vision_encoder import GroundedVisionEncoder
 from src.grounding_module import GradCAMGrounding
 from src.report_generator import ConstrainedReportGenerator
@@ -32,11 +32,19 @@ def main():
     parser.add_argument("--output-dir", type=str, default="./evaluation", help="Directory to save evaluation results")
     parser.add_argument("--num-samples", type=int, default=None, help="Limit number of test samples to evaluate")
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu", help="Device (cpu/cuda)")
+    parser.add_argument(
+        "--dataset",
+        type=normalize_dataset_name,
+        default=None,
+        choices=SUPPORTED_DATASETS,
+        help="Dataset to evaluate on: MIMIC-CXR, PADCHEST, or IU-XRAY",
+    )
     
     args = parser.parse_args()
     
     config = get_config()
     device = torch.device(args.device)
+    selected_dataset = args.dataset or normalize_dataset_name(config.data.primary_dataset)
     
     # 1. Load model and config
     model = GroundedVisionEncoder(config=config.vision)
@@ -57,12 +65,17 @@ def main():
     evaluator = MedicalReportEvaluator(config=config.evaluation)
     
     # 3. Load test dataset
-    print("Loading test dataset splits...")
+    print(f"Loading {selected_dataset} test dataset split...")
     # Evaluate transforms
     from src.preprocessing import get_eval_transforms
     eval_transform = get_eval_transforms(config.vision.input_size)
     
-    test_dataset = IUXRayDataset(split="test", transform=eval_transform, config=config)
+    test_dataset = MedicalReportDataset(
+        dataset_name=selected_dataset,
+        split="test",
+        transform=eval_transform,
+        config=config,
+    )
     print(f"Loaded {len(test_dataset)} test samples.")
     
     num_samples = len(test_dataset)

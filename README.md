@@ -19,6 +19,35 @@ By combining vision encoding, confidence-gated templates, visual grounding, and 
 
 ---
 
+## Important: Dataset Configuration
+
+The training and evaluation pipeline is designed for three dataset modes:
+
+| Dataset | Role | Access |
+|---|---|---|
+| `MIMIC-CXR` | Primary target dataset | Requires PhysioNet credentialing and local download |
+| `PADCHEST` | Alternative target dataset | Requires BIMCV approval and local download |
+| `IU-XRAY` | Free fallback/demo dataset | HuggingFace download, with mock fallback for offline smoke tests |
+
+The default configured primary dataset is `MIMIC-CXR`. If you do not have protected dataset access yet, run commands with `--dataset IU-XRAY` and keep the included sample-audit reports labeled as demonstrations, not clinical benchmark results.
+
+Configure local protected dataset paths in `src/config.py` or with environment variables:
+
+```bash
+set MIMIC_CXR_PATH=D:\datasets\mimic-cxr-jpg
+set PADCHEST_PATH=D:\datasets\padchest
+```
+
+Validate local datasets before training:
+
+```bash
+python scripts/download_datasets.py --check-all
+python scripts/download_datasets.py --mimic D:\datasets\mimic-cxr-jpg
+python scripts/download_datasets.py --padchest D:\datasets\padchest
+```
+
+---
+
 ## Key Features
 
 ### 🔗 Evidence Traceability
@@ -136,13 +165,16 @@ python scripts/train.py \
   --epochs 10 \
   --batch-size 8 \
   --lr 1e-4 \
-  --dataset iu-xray
+  --dataset MIMIC-CXR
 ```
+
+Use `--dataset IU-XRAY` for the free fallback when MIMIC-CXR/PadChest are not available locally.
 
 ### Evaluate on Benchmark
 
 ```bash
 python scripts/evaluate.py \
+  --dataset MIMIC-CXR \
   --num-samples 10 \
   --output-dir evaluation/
 ```
@@ -229,7 +261,7 @@ ClinicGuard-ReportGen/
 │
 ├── src/
 │   ├── config.py                   # Paths, pathology labels, thresholds
-│   ├── data_loader.py              # IU X-Ray loader and dataset stubs
+│   ├── data_loader.py              # MIMIC-CXR, PadChest, and IU X-Ray loaders
 │   ├── preprocessing.py            # Image and report preprocessing
 │   ├── vision_encoder.py           # DenseNet121 feature extractor
 │   ├── grounding_module.py         # Grad-CAM and bounding boxes
@@ -240,7 +272,7 @@ ClinicGuard-ReportGen/
 │   └── evaluation.py               # Evaluation suite
 │
 ├── scripts/
-│   ├── download_datasets.py        # Dataset access instructions
+│   ├── download_datasets.py        # Dataset validation and IU X-Ray fallback
 │   ├── generate_sample_data.py     # Local sample data generation
 │   ├── train.py                    # Training CLI
 │   ├── inference.py                # Inference CLI
@@ -253,9 +285,7 @@ ClinicGuard-ReportGen/
 ├── reports/                        # Technical documentation, PDFs, and assets
 ├── notebooks/                      # Exploratory analysis
 └── docs/
-    ├── ARCHITECTURE.md             # Technical deep-dive
-    ├── EVIDENCE_LOG_FORMAT.md      # CSV schema documentation
-    └── LIMITATIONS.md              # Clinical and technical limitations
+    └── SETUP.md                    # Dataset setup and validation
 ```
 
 ---
@@ -300,49 +330,76 @@ CASE-001,Large right upper lobe mass,UNGROUNDED,UNGROUNDED,0.21,True,Mass,flagge
 
 ### Local Sample Data (Included)
 
-Pre-bundled sample cases for immediate experimentation without external downloads.
+Pre-bundled sample cases are included for dashboard and artifact smoke tests.
 
 ```bash
 python scripts/generate_sample_data.py
 ```
 
-### Public IU X-Ray Dataset
+### MIMIC-CXR (Primary Target)
+
+MIMIC-CXR requires PhysioNet credentialing and a local download. After approval, place the dataset under `data/raw/mimic-cxr` or set `MIMIC_CXR_PATH`.
+
+```bash
+python scripts/download_datasets.py --mimic D:\datasets\mimic-cxr-jpg
+python scripts/train.py --dataset MIMIC-CXR --epochs 15
+python scripts/evaluate.py --dataset MIMIC-CXR --num-samples 100
+```
+
+### PadChest (Alternative Target)
+
+PadChest requires BIMCV approval. After extraction, place the dataset under `data/raw/padchest` or set `PADCHEST_PATH`.
+
+```bash
+python scripts/download_datasets.py --padchest D:\datasets\padchest
+python scripts/train.py --dataset PADCHEST --epochs 15
+python scripts/evaluate.py --dataset PADCHEST --num-samples 100
+```
+
+### IU X-Ray (Free Fallback)
+
+Use IU X-Ray only when protected datasets are unavailable. This is useful for smoke tests and demonstration runs.
 
 ```bash
 python scripts/download_datasets.py --iu-xray
+python scripts/train.py --dataset IU-XRAY --epochs 10
+python scripts/evaluate.py --dataset IU-XRAY --num-samples 10
 ```
 
-### Protected Datasets (Access Required)
-
-For MIMIC-CXR and PadChest, the scripts provide access instructions:
-
-```bash
-python scripts/download_datasets.py --mimic
-python scripts/download_datasets.py --padchest
-```
-
-These datasets require external approval. See the documentation for instructions on how to request access.
+The included reports and evidence log are offline sample-audit artifacts unless you regenerate them after configuring an approved dataset and model checkpoint.
 
 ---
 
 ## Configuration
+
+### Dataset Selection
+
+Edit `src/config.py` or set environment variables before running training/evaluation:
+
+```python
+PRIMARY_DATASET = "MIMIC-CXR"
+MIMIC_CXR_PATH = "./data/raw/mimic-cxr"
+PADCHEST_PATH = "./data/raw/padchest"
+IU_XRAY_HF_DATASET = "dz-osamu/IU-Xray"
+```
+
+Command-line flags override the configured primary dataset:
+
+```bash
+python scripts/train.py --dataset MIMIC-CXR
+python scripts/evaluate.py --dataset PADCHEST
+python scripts/train.py --dataset IU-XRAY --sample-limit 25
+```
 
 ### Key Thresholds
 
 Edit `src/config.py` to adjust report generation behavior:
 
 ```python
-# Confidence thresholds by finding type
-CONFIDENCE_THRESHOLDS = {
-    'critical': 0.90,      # e.g., pneumothorax, pulmonary embolism
-    'major': 0.80,         # e.g., consolidation, effusion
-    'moderate': 0.70,      # e.g., atelectasis
-    'minor': 0.60,         # e.g., minor airway changes
-}
-
-# Uncertainty handling
-REFUSAL_MODE = 'soft'     # 'hard' = omit, 'soft' = hedge with "may"
-MC_DROPOUT_ITERATIONS = 10  # For epistemic uncertainty
+confidence_threshold_positive = 0.75
+confidence_threshold_uncertain = 0.50
+confidence_threshold_refusal = 0.50
+hallucination_penalty_weight = 5.0
 ```
 
 ---
@@ -426,15 +483,15 @@ See `src/evaluation.py` for metric definitions.
 - **Sample data** is for offline development; real data requires institutional review
 
 ### Technical Scope
-- Default workflow uses local sample or IU X-Ray–style data
-- Protected datasets (MIMIC-CXR, PadChest) require external approvals
-- Model weights are not pre-trained on clinical data; you must train locally
+- Primary configured dataset is `MIMIC-CXR`, but protected datasets require external approvals and local paths
+- `IU-XRAY` is available as an explicit free fallback for development and smoke tests
+- Model checkpoints are not bundled; train locally or provide `--model` during evaluation
 - GPU strongly recommended; CPU inference is slow
 
 ### Evidence Log Caveats
 - Included `reports/GROUNDING_EVIDENCE_LOG.csv` contains an expanded offline sample audit log with claim decisions, refusals, and hallucination flags
 - Included PDFs and plots demonstrate the reporting format and audit pipeline
-- Not a clinical benchmark; evaluated metrics are from sample data artifacts unless regenerated with approved datasets and checkpoints
+- Do not describe included metrics as MIMIC-CXR or PadChest benchmark results unless regenerated with approved local datasets and checkpoints
 
 ### Known Issues
 - Grad-CAM heatmaps may highlight background regions on low-contrast images

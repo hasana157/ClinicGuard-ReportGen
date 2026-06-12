@@ -103,7 +103,7 @@ Regenerate the evidence log, plots, Markdown reports, and PDFs:
 python scripts/generate_report_artifacts.py
 ```
 
-For a real benchmark, run `scripts/evaluate.py` after configuring approved datasets and model checkpoints. Replace the sample audit with the exported benchmark rows before making clinical performance claims.
+For a real benchmark, run `scripts/evaluate.py --dataset MIMIC-CXR` or `scripts/evaluate.py --dataset PADCHEST` after configuring approved datasets and model checkpoints. Replace the sample audit with the exported benchmark rows before making clinical performance claims.
 
 ## Limitations
 

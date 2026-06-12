@@ -30,15 +30,39 @@ SAMPLE_OUTPUTS_DIR = os.path.join(EVALUATION_DIR, "sample_outputs")
 # Dataset Configuration
 # ============================================================================
 
-# IU X-Ray (Indiana University) — Primary dataset
-IU_XRAY_HF_DATASET = "ykumards/open-i"  # HuggingFace dataset identifier
-IU_XRAY_ALT_DATASET = "dz-osamu/IU-Xray"  # Alternative HuggingFace source
+# Dataset selection and local dataset paths
+PRIMARY_DATASET = os.environ.get("CLINICGUARD_PRIMARY_DATASET", "MIMIC-CXR")
+MIMIC_CXR_PATH = os.environ.get(
+    "MIMIC_CXR_PATH", os.path.join(RAW_DATA_DIR, "mimic-cxr")
+)
+PADCHEST_PATH = os.environ.get(
+    "PADCHEST_PATH", os.path.join(RAW_DATA_DIR, "padchest")
+)
+
+# IU X-Ray (Indiana University) is retained as the free fallback dataset.
+IU_XRAY_HF_DATASET = "dz-osamu/IU-Xray"  # HuggingFace dataset identifier
+IU_XRAY_ALT_DATASET = "ykumards/open-i"  # Alternative HuggingFace source
 
 # Dataset splits
 TRAIN_RATIO = 0.8
 VAL_RATIO = 0.1
 TEST_RATIO = 0.1
 RANDOM_SEED = 42
+
+
+@dataclass
+class DataConfig:
+    """Configuration for dataset selection and local dataset paths."""
+    primary_dataset: str = PRIMARY_DATASET
+    mimic_cxr_path: str = MIMIC_CXR_PATH
+    padchest_path: str = PADCHEST_PATH
+    iu_xray_hf_dataset: str = IU_XRAY_HF_DATASET
+    iu_xray_alt_dataset: str = IU_XRAY_ALT_DATASET
+    train_ratio: float = TRAIN_RATIO
+    val_ratio: float = VAL_RATIO
+    test_ratio: float = TEST_RATIO
+    max_samples_per_split: Optional[int] = None
+    allow_iu_mock_fallback: bool = True
 
 
 # ============================================================================
@@ -190,6 +214,7 @@ REPORT_SECTIONS = ["INDICATION", "COMPARISON", "FINDINGS", "IMPRESSION"]
 @dataclass
 class ProjectConfig:
     """Master configuration combining all sub-configs."""
+    data: DataConfig = field(default_factory=DataConfig)
     vision: VisionEncoderConfig = field(default_factory=VisionEncoderConfig)
     classification: ClassificationConfig = field(default_factory=ClassificationConfig)
     report: ReportGeneratorConfig = field(default_factory=ReportGeneratorConfig)
