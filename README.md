@@ -86,16 +86,25 @@ The Streamlit dashboard provides:
 **Dashboard Screenshots:**
 
 > **[Dashboard Hero - Image Upload & Controls]**  
-> *Insert screenshot showing the main Streamlit interface with image upload area and sidebar controls*
+<img width="2479" height="1129" alt="image" src="https://github.com/user-attachments/assets/cc526eb8-f5c4-426e-97c1-0a1b6820abb6" />
+
+<img width="2089" height="1091" alt="image" src="https://github.com/user-attachments/assets/94b25652-021c-422f-81fe-46d92040e7b0" />
+
+
+
 
 > **[Report Generation Panel - Live Claims & Confidence]**  
-> *Insert screenshot showing generated claims with confidence scores in real-time*
+<img width="1578" height="1016" alt="image" src="https://github.com/user-attachments/assets/61602936-e25e-4eb2-84f5-9d36d2d68976" />
+
 
 > **[Evidence Visualization - Heatmaps & Overlays]**  
-> *Insert screenshot showing Grad-CAM heatmap with bounding box overlays for grounding*
+<img width="688" height="986" alt="image" src="https://github.com/user-attachments/assets/4ab2875a-10ce-4109-868e-de89fd4c4927" />
+
+
 
 > **[Evidence Log Table - Audit Trail]**  
-> *Insert screenshot showing the evidence log CSV display with sample_id, claim, source, and confidence columns*
+<img width="741" height="837" alt="image" src="https://github.com/user-attachments/assets/8ecc90bf-d233-4d34-9a1f-c4d3f3bddb3d" />
+
 
 ### Generate Sample Data
 
