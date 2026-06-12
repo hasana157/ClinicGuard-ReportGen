@@ -1,0 +1,11 @@
+sample_id,generated_claim,source_type,source_reference,confidence_score,hallucinated
+001,Cardiomegaly present,visual,image_region_bbox:[100,150,250,300],0.94,False
+001,Patient history of hypertension,history,structured_data:patient_id_X123,0.88,False
+001,No signs of pneumonia,visual,image_region_bbox:[50,100,200,250],0.91,False
+002,Atelectasis in left lower lobe,visual,UNGROUNDED,0.0,True
+002,Patient on antibiotics per prior report,prior,report_dated_2026-06-08,0.87,False
+003,Effusion identified at left costophrenic angle,visual,image_region_bbox:[120,170,270,320],0.81,False
+003,No pneumothorax identified,visual,global_image_assessment,0.95,False
+004,Hiatal hernia identified,visual,image_region_bbox:[80,120,220,260],0.89,False
+004,Chronic scarring,prior,report_dated_2026-05-15,0.78,False
+005,Lungs are clear of infiltrates,visual,global_image_assessment,0.92,False

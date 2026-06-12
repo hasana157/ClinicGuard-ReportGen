@@ -1,0 +1,10 @@
+Metric,Value
+Hallucination Rate,0.032
+Grounding Success Rate,0.968
+Precision,0.92
+Recall,0.88
+Composite Score,0.78
+BLEU,0.34
+ROUGE-1,0.48
+ROUGE-2,0.22
+ROUGE-L,0.44
