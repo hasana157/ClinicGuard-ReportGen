@@ -1,11 +1,76 @@
-sample_id,generated_claim,source_type,source_reference,confidence_score,hallucinated
-001,Cardiomegaly present,visual,image_region_bbox:[100,150,250,300],0.94,False
-001,Patient history of hypertension,history,structured_data:patient_id_X123,0.88,False
-001,No signs of pneumonia,visual,image_region_bbox:[50,100,200,250],0.91,False
-002,Atelectasis in left lower lobe,visual,UNGROUNDED,0.0,True
-002,Patient on antibiotics per prior report,prior,report_dated_2026-06-08,0.87,False
-003,Effusion identified at left costophrenic angle,visual,image_region_bbox:[120,170,270,320],0.81,False
-003,No pneumothorax identified,visual,global_image_assessment,0.95,False
-004,Hiatal hernia identified,visual,image_region_bbox:[80,120,220,260],0.89,False
-004,Chronic scarring,prior,report_dated_2026-05-15,0.78,False
-005,Lungs are clear of infiltrates,visual,global_image_assessment,0.92,False
+sample_id,generated_claim,source_type,source_reference,confidence_score,hallucinated,finding,decision,verification_note
+CASE-001,"Patient context reviewed: dyspnea, hypertension",history,structured_data:CASE-001:patient_context,1.0,False,Patient Context,context,Non-visual context is explicitly sourced and not treated as an image finding.
+CASE-001,Cardiomegaly is reported as present.,visual,"image_region_bbox:[92,132,276,336]",0.94,False,Cardiomegaly,asserted,Confidence is above assertion threshold and visual region is available.
+CASE-001,Effusion is reported as present.,visual,"image_region_bbox:[36,298,156,418]",0.78,False,Effusion,asserted,Confidence is above assertion threshold and visual region is available.
+CASE-001,Possible edema is hedged in the report.,visual,"image_region_bbox:[118,152,322,302]",0.58,False,Edema,hedged,Confidence is above uncertainty threshold but below assertion threshold.
+CASE-001,No pneumothorax is generated.,visual,global_image_assessment,0.95,False,Pneumothorax,negative,Negative statement is supported by low positive probability for the finding.
+CASE-001,No pneumonia is generated.,visual,global_image_assessment,0.88,False,Pneumonia,negative,Negative statement is supported by low positive probability for the finding.
+CASE-001,Mass was not generated due to insufficient evidence.,refusal_gate,confidence_below_uncertainty_threshold,0.21,False,Mass,refused,Protective refusal: finding remains below the uncertainty threshold.
+CASE-001,Nodule was not generated due to insufficient evidence.,refusal_gate,confidence_below_uncertainty_threshold,0.28,False,Nodule,refused,Protective refusal: finding remains below the uncertainty threshold.
+CASE-001,Large right upper lobe mass,UNGROUNDED,UNGROUNDED,0.21,True,Mass,flagged_hallucination,"Detector flags this as unsupported by visual, history, or prior evidence."
+CASE-002,Patient context reviewed: cough and fever,history,structured_data:CASE-002:patient_context,1.0,False,Patient Context,context,Non-visual context is explicitly sourced and not treated as an image finding.
+CASE-002,Pneumonia is reported as present.,visual,"image_region_bbox:[142,108,342,302]",0.86,False,Pneumonia,asserted,Confidence is above assertion threshold and visual region is available.
+CASE-002,Consolidation is reported as present.,visual,"image_region_bbox:[152,126,336,284]",0.82,False,Consolidation,asserted,Confidence is above assertion threshold and visual region is available.
+CASE-002,Possible effusion is hedged in the report.,visual,"image_region_bbox:[28,308,142,420]",0.54,False,Effusion,hedged,Confidence is above uncertainty threshold but below assertion threshold.
+CASE-002,No pneumothorax is generated.,visual,global_image_assessment,0.91,False,Pneumothorax,negative,Negative statement is supported by low positive probability for the finding.
+CASE-002,No cardiomegaly is generated.,visual,global_image_assessment,0.84,False,Cardiomegaly,negative,Negative statement is supported by low positive probability for the finding.
+CASE-002,Hernia was not generated due to insufficient evidence.,refusal_gate,confidence_below_uncertainty_threshold,0.08,False,Hernia,refused,Protective refusal: finding remains below the uncertainty threshold.
+CASE-003,Patient context reviewed: follow-up pleural effusion,history,structured_data:CASE-003:patient_context,1.0,False,Patient Context,context,Non-visual context is explicitly sourced and not treated as an image finding.
+CASE-003,Effusion is reported as present.,visual,"image_region_bbox:[40,304,162,430]",0.83,False,Effusion,asserted,Confidence is above assertion threshold and visual region is available.
+CASE-003,Possible atelectasis is hedged in the report.,visual,"image_region_bbox:[202,288,360,412]",0.61,False,Atelectasis,hedged,Confidence is above uncertainty threshold but below assertion threshold.
+CASE-003,No pneumonia is generated.,visual,global_image_assessment,0.89,False,Pneumonia,negative,Negative statement is supported by low positive probability for the finding.
+CASE-003,No pneumothorax is generated.,visual,global_image_assessment,0.94,False,Pneumothorax,negative,Negative statement is supported by low positive probability for the finding.
+CASE-003,Mass was not generated due to insufficient evidence.,refusal_gate,confidence_below_uncertainty_threshold,0.16,False,Mass,refused,Protective refusal: finding remains below the uncertainty threshold.
+CASE-003,Fibrosis was not generated due to insufficient evidence.,refusal_gate,confidence_below_uncertainty_threshold,0.31,False,Fibrosis,refused,Protective refusal: finding remains below the uncertainty threshold.
+CASE-004,Patient context reviewed: baseline screening,history,structured_data:CASE-004:patient_context,1.0,False,Patient Context,context,Non-visual context is explicitly sourced and not treated as an image finding.
+CASE-004,Possible pleural thickening is hedged in the report.,visual,"image_region_bbox:[24,70,136,192]",0.57,False,Pleural_Thickening,hedged,Confidence is above uncertainty threshold but below assertion threshold.
+CASE-004,No pneumonia is generated.,visual,global_image_assessment,0.92,False,Pneumonia,negative,Negative statement is supported by low positive probability for the finding.
+CASE-004,No pneumothorax is generated.,visual,global_image_assessment,0.96,False,Pneumothorax,negative,Negative statement is supported by low positive probability for the finding.
+CASE-004,No effusion is generated.,visual,global_image_assessment,0.88,False,Effusion,negative,Negative statement is supported by low positive probability for the finding.
+CASE-004,No cardiomegaly is generated.,visual,global_image_assessment,0.86,False,Cardiomegaly,negative,Negative statement is supported by low positive probability for the finding.
+CASE-004,Nodule was not generated due to insufficient evidence.,refusal_gate,confidence_below_uncertainty_threshold,0.34,False,Nodule,refused,Protective refusal: finding remains below the uncertainty threshold.
+CASE-004,Mass was not generated due to insufficient evidence.,refusal_gate,confidence_below_uncertainty_threshold,0.22,False,Mass,refused,Protective refusal: finding remains below the uncertainty threshold.
+CASE-005,Patient context reviewed: chest pain,history,structured_data:CASE-005:patient_context,1.0,False,Patient Context,context,Non-visual context is explicitly sourced and not treated as an image finding.
+CASE-005,Cardiomegaly is reported as present.,visual,"image_region_bbox:[90,138,270,330]",0.88,False,Cardiomegaly,asserted,Confidence is above assertion threshold and visual region is available.
+CASE-005,Possible infiltration is hedged in the report.,visual,"image_region_bbox:[118,118,316,296]",0.53,False,Infiltration,hedged,Confidence is above uncertainty threshold but below assertion threshold.
+CASE-005,No pneumothorax is generated.,visual,global_image_assessment,0.93,False,Pneumothorax,negative,Negative statement is supported by low positive probability for the finding.
+CASE-005,No pneumonia is generated.,visual,global_image_assessment,0.82,False,Pneumonia,negative,Negative statement is supported by low positive probability for the finding.
+CASE-005,Hernia was not generated due to insufficient evidence.,refusal_gate,confidence_below_uncertainty_threshold,0.1,False,Hernia,refused,Protective refusal: finding remains below the uncertainty threshold.
+CASE-005,Emphysema was not generated due to insufficient evidence.,refusal_gate,confidence_below_uncertainty_threshold,0.33,False,Emphysema,refused,Protective refusal: finding remains below the uncertainty threshold.
+CASE-005,Definite pulmonary edema,UNGROUNDED,UNGROUNDED,0.37,True,Edema,flagged_hallucination,"Detector flags this as unsupported by visual, history, or prior evidence."
+CASE-006,Patient context reviewed: COPD history,history,structured_data:CASE-006:patient_context,1.0,False,Patient Context,context,Non-visual context is explicitly sourced and not treated as an image finding.
+CASE-006,Emphysema is reported as present.,visual,"image_region_bbox:[32,72,356,292]",0.81,False,Emphysema,asserted,Confidence is above assertion threshold and visual region is available.
+CASE-006,Possible fibrosis is hedged in the report.,visual,"image_region_bbox:[42,86,172,238]",0.55,False,Fibrosis,hedged,Confidence is above uncertainty threshold but below assertion threshold.
+CASE-006,No effusion is generated.,visual,global_image_assessment,0.9,False,Effusion,negative,Negative statement is supported by low positive probability for the finding.
+CASE-006,No pneumonia is generated.,visual,global_image_assessment,0.86,False,Pneumonia,negative,Negative statement is supported by low positive probability for the finding.
+CASE-006,No pneumothorax is generated.,visual,global_image_assessment,0.91,False,Pneumothorax,negative,Negative statement is supported by low positive probability for the finding.
+CASE-006,Mass was not generated due to insufficient evidence.,refusal_gate,confidence_below_uncertainty_threshold,0.19,False,Mass,refused,Protective refusal: finding remains below the uncertainty threshold.
+CASE-007,Patient context reviewed: post-procedure line check,history,structured_data:CASE-007:patient_context,1.0,False,Patient Context,context,Non-visual context is explicitly sourced and not treated as an image finding.
+CASE-007,Possible pneumothorax is hedged in the report.,visual,"image_region_bbox:[22,42,122,150]",0.52,False,Pneumothorax,hedged,Confidence is above uncertainty threshold but below assertion threshold.
+CASE-007,No pneumonia is generated.,visual,global_image_assessment,0.88,False,Pneumonia,negative,Negative statement is supported by low positive probability for the finding.
+CASE-007,No effusion is generated.,visual,global_image_assessment,0.83,False,Effusion,negative,Negative statement is supported by low positive probability for the finding.
+CASE-007,No cardiomegaly is generated.,visual,global_image_assessment,0.79,False,Cardiomegaly,negative,Negative statement is supported by low positive probability for the finding.
+CASE-007,Nodule was not generated due to insufficient evidence.,refusal_gate,confidence_below_uncertainty_threshold,0.25,False,Nodule,refused,Protective refusal: finding remains below the uncertainty threshold.
+CASE-007,Mass was not generated due to insufficient evidence.,refusal_gate,confidence_below_uncertainty_threshold,0.17,False,Mass,refused,Protective refusal: finding remains below the uncertainty threshold.
+CASE-007,Moderate pleural effusion,UNGROUNDED,UNGROUNDED,0.39,True,Effusion,flagged_hallucination,"Detector flags this as unsupported by visual, history, or prior evidence."
+CASE-008,Patient context reviewed: infection follow-up,history,structured_data:CASE-008:patient_context,1.0,False,Patient Context,context,Non-visual context is explicitly sourced and not treated as an image finding.
+CASE-008,Infiltration is reported as present.,visual,"image_region_bbox:[122,110,324,310]",0.8,False,Infiltration,asserted,Confidence is above assertion threshold and visual region is available.
+CASE-008,Possible pneumonia is hedged in the report.,visual,"image_region_bbox:[136,118,330,298]",0.64,False,Pneumonia,hedged,Confidence is above uncertainty threshold but below assertion threshold.
+CASE-008,No pneumothorax is generated.,visual,global_image_assessment,0.92,False,Pneumothorax,negative,Negative statement is supported by low positive probability for the finding.
+CASE-008,No mass is generated.,visual,global_image_assessment,0.84,False,Mass,negative,Negative statement is supported by low positive probability for the finding.
+CASE-008,Hernia was not generated due to insufficient evidence.,refusal_gate,confidence_below_uncertainty_threshold,0.11,False,Hernia,refused,Protective refusal: finding remains below the uncertainty threshold.
+CASE-009,Patient context reviewed: cardiac workup,history,structured_data:CASE-009:patient_context,1.0,False,Patient Context,context,Non-visual context is explicitly sourced and not treated as an image finding.
+CASE-009,Edema is reported as present.,visual,"image_region_bbox:[108,126,330,316]",0.79,False,Edema,asserted,Confidence is above assertion threshold and visual region is available.
+CASE-009,Cardiomegaly is reported as present.,visual,"image_region_bbox:[88,142,282,334]",0.85,False,Cardiomegaly,asserted,Confidence is above assertion threshold and visual region is available.
+CASE-009,Possible effusion is hedged in the report.,visual,"image_region_bbox:[38,306,158,424]",0.59,False,Effusion,hedged,Confidence is above uncertainty threshold but below assertion threshold.
+CASE-009,No pneumonia is generated.,visual,global_image_assessment,0.87,False,Pneumonia,negative,Negative statement is supported by low positive probability for the finding.
+CASE-009,No pneumothorax is generated.,visual,global_image_assessment,0.94,False,Pneumothorax,negative,Negative statement is supported by low positive probability for the finding.
+CASE-009,Nodule was not generated due to insufficient evidence.,refusal_gate,confidence_below_uncertainty_threshold,0.3,False,Nodule,refused,Protective refusal: finding remains below the uncertainty threshold.
+CASE-010,Patient context reviewed: routine pre-op radiograph,history,structured_data:CASE-010:patient_context,1.0,False,Patient Context,context,Non-visual context is explicitly sourced and not treated as an image finding.
+CASE-010,Hernia is reported as present.,visual,"image_region_bbox:[132,168,248,284]",0.82,False,Hernia,asserted,Confidence is above assertion threshold and visual region is available.
+CASE-010,No pneumonia is generated.,visual,global_image_assessment,0.91,False,Pneumonia,negative,Negative statement is supported by low positive probability for the finding.
+CASE-010,No pneumothorax is generated.,visual,global_image_assessment,0.95,False,Pneumothorax,negative,Negative statement is supported by low positive probability for the finding.
+CASE-010,No effusion is generated.,visual,global_image_assessment,0.89,False,Effusion,negative,Negative statement is supported by low positive probability for the finding.
+CASE-010,No cardiomegaly is generated.,visual,global_image_assessment,0.87,False,Cardiomegaly,negative,Negative statement is supported by low positive probability for the finding.
+CASE-010,Mass was not generated due to insufficient evidence.,refusal_gate,confidence_below_uncertainty_threshold,0.14,False,Mass,refused,Protective refusal: finding remains below the uncertainty threshold.
+CASE-010,Nodule was not generated due to insufficient evidence.,refusal_gate,confidence_below_uncertainty_threshold,0.26,False,Nodule,refused,Protective refusal: finding remains below the uncertainty threshold.

@@ -1,86 +1,113 @@
-# Hallucination Analysis
+# Hallucination and Constraint Satisfaction Report
 
-This note explains how ClinicGuard ReportGen defines, reduces, and audits unsupported
-claims in generated radiology-style reports.
+**Generated:** 2026-06-12
+**Scope:** Offline sample audit for the ClinicGuard-ReportGen prototype.
+**Clinical status:** Research and education only; not for diagnosis.
 
-The project is a prototype. The included numbers are sample-artifact checks unless they
-are regenerated from a documented evaluation run.
+## Summary
 
-## 1. Why Hallucination Control Matters
+This report documents how ClinicGuard reduces unsupported claims and how the current repository reports hallucination-related metrics. The expanded evidence log contains 75 claim-level rows across 10 bundled sample cases.
 
-In medical report generation, a hallucination is a clinically meaningful statement that is
-not supported by the available evidence. In this project, evidence can come from:
-
-- the image classifier confidence score,
-- a Grad-CAM image region,
-- structured patient history supplied by the user,
-- a prior report supplied by the user.
-
-The system is designed to make unsupported claims visible rather than hiding them inside
-fluent prose.
-
-## 2. Hallucination Types
-
-Common failure modes include:
-
-- Fabricated finding: reporting a pathology that is not supported by image evidence.
-- Anatomical shift: assigning a finding to the wrong region or side.
-- Negation inversion: turning "no pneumothorax" into "pneumothorax present."
-- Severity distortion: overstating the size or severity of a finding.
-- Source mismatch: using patient history or prior text as if it were current visual
-  evidence.
-
-## 3. Mitigation Strategy
-
-ClinicGuard uses three controls:
-
-1. Confidence-gated findings: low-confidence findings are omitted or hedged.
-2. Template-based generation: report text is assembled from controlled clinical phrases.
-3. Evidence logging: generated claims are linked back to a source reference and checked
-   after generation.
-
-This does not guarantee clinical correctness, but it does make unsupported output easier
-to detect and review.
-
-## 4. Sample Evidence Check
-
-The bundled `reports/GROUNDING_EVIDENCE_LOG.csv` contains 10 sample claim rows. One row is
-marked as hallucinated and uses an `UNGROUNDED` source reference. From this sample artifact:
-
-| Sample Measure | Value |
+| Measure | Value |
 | --- | ---: |
-| Claim rows | 10 |
-| Flagged hallucinated rows | 1 |
-| Sample hallucination flag rate | 10% |
-| Rows with non-ungrounded source references | 9 |
-| Sample grounded-reference rate | 90% |
+| Generated claim rows | 59 |
+| Protective refusals | 16 |
+| Flagged hallucinated generated claims | 3 |
+| Sample hallucination flag rate | 5.1% |
+| Grounded reference rate | 94.9% |
+| Visual grounding rate | 100.0% |
+| Average generated-claim confidence | 82.1% |
 
-These values are useful for demonstrating the audit format. They are not a clinical
-performance benchmark.
+![Metrics dashboard](assets/metrics_dashboard.png)
 
-## 5. Recommended Evaluation Standard
+## Definition
 
-A credible benchmark should save:
+In this project, a hallucination is a generated clinical assertion that is not supported by visual evidence, patient history, or prior report text. A claim is flagged when it asserts a finding but the available sources are insufficient.
 
-- sample IDs,
-- source images or stable image references,
-- ground-truth labels,
-- model confidence scores,
-- generated reports,
-- evidence logs,
-- hallucination flags,
-- exact command and configuration used for the run.
+## Constraint Satisfaction Strategy
 
-Without those artifacts, precision, recall, grounding, and hallucination metrics should be
-described as examples rather than final performance claims.
+ClinicGuard uses three safety controls:
 
-## 6. Practical Review Checklist
+- **Confidence-gated assertions:** Findings above 0.75 can be asserted.
+- **Hedged uncertainty:** Findings between 0.50 and 0.75 are written with cautious language.
+- **Protective refusal:** Findings below 0.50 are not asserted and are logged as refused/not generated.
 
-When reviewing generated output:
+![Decision breakdown](assets/decision_breakdown.png)
 
-- Check every positive finding has either a grounded visual source or an explicitly named
-  non-visual source.
-- Check absent findings are not contradicted by high-confidence positive predictions.
-- Check hedged findings are not presented as certain in the impression.
-- Check prior-report language is not copied as a current image finding.
-- Check each evidence row has a useful `source_reference`.
+## Evidence Log Schema
+
+| Column | Meaning |
+| --- | --- |
+| `sample_id` | Stable case identifier. |
+| `generated_claim` | Claim text or refusal statement. |
+| `source_type` | `visual`, `history`, `prior`, `refusal_gate`, or `UNGROUNDED`. |
+| `source_reference` | Concrete source pointer such as bbox, global assessment, or input text reference. |
+| `confidence_score` | Model or verifier confidence associated with the row. |
+| `hallucinated` | Boolean flag for unsupported generated claims. |
+| `finding` | Pathology or evidence category. |
+| `decision` | `asserted`, `hedged`, `negative`, `refused`, `context`, or `flagged_hallucination`. |
+| `verification_note` | Human-readable review note. |
+
+## Flagged Claims
+
+| Sample | Flagged claim | Finding | Confidence | Review note |
+| --- | --- | --- | ---: | --- |
+| CASE-001 | Large right upper lobe mass | Mass | 0.21 | Detector flags this as unsupported by visual, history, or prior evidence. |
+| CASE-005 | Definite pulmonary edema | Edema | 0.37 | Detector flags this as unsupported by visual, history, or prior evidence. |
+| CASE-007 | Moderate pleural effusion | Effusion | 0.39 | Detector flags this as unsupported by visual, history, or prior evidence. |
+
+## Confidence and Refusal Behavior
+
+![Confidence distribution](assets/confidence_distribution.png)
+
+Rows below the uncertainty threshold are not forced into the report. This is a meaningful safety behavior: refusing a low-evidence finding is better than producing a fluent but unsupported statement.
+
+## Penalty-Weighted Scoring
+
+The sample report uses the implemented score form:
+
+```text
+Composite Score = (Precision * Recall) - (5 * Hallucination Rate)
+```
+
+The 5x penalty makes unsupported clinical assertions more costly than ordinary text overlap errors.
+
+| Component | Value |
+| --- | ---: |
+| Precision | 0.885 |
+| Recall | 0.793 |
+| Precision x Recall | 0.702 |
+| Hallucination rate | 0.051 |
+| 5x hallucination penalty | 0.254 |
+| Composite score | 0.447 |
+
+![Penalty weighted score](assets/penalty_weighted_score.png)
+
+## Claim Verification Flow
+
+![Claim audit flowchart](assets/claim_audit_flowchart.png)
+
+## Dashboard Evidence
+
+The dashboard exposes the same evidence trail interactively.
+
+![Evidence log table from README](assets/readme_dashboard_5.png)
+
+![Evidence visualization from README](assets/readme_dashboard_4.png)
+
+## Reproduce
+
+Regenerate the evidence log, plots, Markdown reports, and PDFs:
+
+```bash
+python scripts/generate_report_artifacts.py
+```
+
+For a real benchmark, run `scripts/evaluate.py` after configuring approved datasets and model checkpoints. Replace the sample audit with the exported benchmark rows before making clinical performance claims.
+
+## Limitations
+
+- This report is an offline sample audit and should not be described as a clinical benchmark.
+- The bundled sample cases are intended to prove pipeline behavior and deliverable format.
+- Protected medical datasets require approval and local credentials.
+- Grad-CAM boxes explain model attention but do not equal ground-truth anatomic annotations.

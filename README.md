@@ -152,6 +152,19 @@ Produces:
 - `reports/GROUNDING_EVIDENCE_LOG.csv` – Complete claim audit trail
 - `evaluation/sample_outputs/` – Generated reports and visualizations
 
+### Regenerate Technical Report Artifacts
+
+```bash
+python scripts/generate_report_artifacts.py
+```
+
+Produces:
+- `reports/TECHNICAL_REPORT.pdf` – Technical model/pipeline report with dashboard screenshots, EDA, metrics plots, and diagrams
+- `reports/HALLUCINATION_ANALYSIS.pdf` – Constraint satisfaction and hallucination analysis report
+- `reports/assets/` – Local dashboard screenshots, EDA plots, flowcharts, and metric figures
+- `reports/GROUNDING_EVIDENCE_LOG.csv` – Expanded offline sample audit log
+- `evaluation/benchmark_results.csv` – Numeric sample-audit summary
+
 ---
 
 ## Architecture
@@ -232,11 +245,12 @@ ClinicGuard-ReportGen/
 │   ├── train.py                    # Training CLI
 │   ├── inference.py                # Inference CLI
 │   ├── evaluate.py                 # Evaluation CLI
-│   └── generate_pdfs.py            # Report PDF generation
+|   |-- generate_pdfs.py            # Markdown-to-PDF report compiler
+|   \-- generate_report_artifacts.py # Evidence log, plots, reports, and PDFs
 │
 ├── data/sample_cases/              # Local sample X-rays and metadata
 ├── evaluation/                     # Benchmark artifacts
-├── reports/                        # Technical documentation
+├── reports/                        # Technical documentation, PDFs, and assets
 ├── notebooks/                      # Exploratory analysis
 └── docs/
     ├── ARCHITECTURE.md             # Technical deep-dive
@@ -253,7 +267,7 @@ Each generated claim is recorded in CSV format with full grounding metadata:
 ### Schema
 
 ```csv
-sample_id,generated_claim,source_type,source_reference,confidence_score,hallucinated,verification_notes
+sample_id,generated_claim,source_type,source_reference,confidence_score,hallucinated,finding,decision,verification_note
 ```
 
 ### Fields
@@ -262,20 +276,22 @@ sample_id,generated_claim,source_type,source_reference,confidence_score,hallucin
 |-------|------|-------------|
 | `sample_id` | string | Unique identifier for the case |
 | `generated_claim` | string | The generated text claim (e.g., "Cardiomegaly present") |
-| `source_type` | enum | One of: `visual`, `history`, `prior_report`, `combined` |
-| `source_reference` | string | Pointer to evidence source (e.g., `image_region_bbox:[100,150,250,300]` or `history_field:comorbidities`) |
+| `source_type` | enum | One of: `visual`, `history`, `prior`, `refusal_gate`, or `UNGROUNDED` |
+| `source_reference` | string | Pointer to evidence source (e.g., `image_region_bbox:[100,150,250,300]`, `global_image_assessment`, or `confidence_below_uncertainty_threshold`) |
 | `confidence_score` | float | Model confidence on [0.0, 1.0] |
 | `hallucinated` | boolean | Flagged as inconsistent with source evidence |
-| `verification_notes` | string | Reason for hallucination flag (optional) |
+| `finding` | string | Pathology or context category associated with the row |
+| `decision` | enum | One of: `asserted`, `hedged`, `negative`, `refused`, `context`, or `flagged_hallucination` |
+| `verification_note` | string | Human-readable reason for the audit decision |
 
 ### Example
 
 ```csv
-sample_id,generated_claim,source_type,source_reference,confidence_score,hallucinated,verification_notes
-CXR_001,Cardiomegaly present,visual,image_region_bbox:[100,150,250,300],0.94,False,Confirmed by cardiothoracic index
-CXR_001,Right pleural effusion,visual,image_region_bbox:[280,180,400,350],0.87,False,Clear blunting of costophrenic angle
-CXR_001,Mild pulmonary edema,visual,image_region_bbox:[50,50,450,300],0.71,True,Pattern inconsistent with infiltrate regions
-CXR_002,No acute findings,history,patient_age:72|smoking_history:yes,0.65,False,Conservative interpretation given clinical context
+sample_id,generated_claim,source_type,source_reference,confidence_score,hallucinated,finding,decision,verification_note
+CASE-001,Cardiomegaly is reported as present.,visual,image_region_bbox:[92,132,276,336],0.94,False,Cardiomegaly,asserted,Confidence is above assertion threshold and visual region is available.
+CASE-001,Possible edema is hedged in the report.,visual,image_region_bbox:[118,152,322,302],0.58,False,Edema,hedged,Confidence is above uncertainty threshold but below assertion threshold.
+CASE-001,Mass was not generated due to insufficient evidence.,refusal_gate,confidence_below_uncertainty_threshold,0.21,False,Mass,refused,Protective refusal: finding remains below the uncertainty threshold.
+CASE-001,Large right upper lobe mass,UNGROUNDED,UNGROUNDED,0.21,True,Mass,flagged_hallucination,Detector flags this as unsupported by visual history or prior evidence.
 ```
 
 ---
@@ -416,8 +432,9 @@ See `src/evaluation.py` for metric definitions.
 - GPU strongly recommended; CPU inference is slow
 
 ### Evidence Log Caveats
-- Included `reports/GROUNDING_EVIDENCE_LOG.csv` contains 10 sample rows for format demonstration only
-- Not a clinical benchmark; evaluated metrics are from sample data artifacts
+- Included `reports/GROUNDING_EVIDENCE_LOG.csv` contains an expanded offline sample audit log with claim decisions, refusals, and hallucination flags
+- Included PDFs and plots demonstrate the reporting format and audit pipeline
+- Not a clinical benchmark; evaluated metrics are from sample data artifacts unless regenerated with approved datasets and checkpoints
 
 ### Known Issues
 - Grad-CAM heatmaps may highlight background regions on low-contrast images

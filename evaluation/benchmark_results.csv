@@ -1,8 +1,13 @@
 Metric,Value,Notes
-Sample Claim Rows,10,reports/GROUNDING_EVIDENCE_LOG.csv
-Flagged Hallucination Claims,1,sample evidence log
-Sample Hallucination Flag Rate,0.10,1 flagged row out of 10 sample rows
-Sample Grounded Reference Rate,0.90,9 rows with non-ungrounded source references
-Precision,not_reported,requires a labeled benchmark run
-Recall,not_reported,requires a labeled benchmark run
-Composite Score,not_reported,requires a labeled benchmark run
+Sample Audit Claim Rows,75.0,Expanded offline evidence log in reports/GROUNDING_EVIDENCE_LOG.csv
+Generated Claim Rows,59.0,Rows excluding protective refusals
+Refused / Not Generated Rows,16.0,Findings below uncertainty threshold
+Flagged Hallucination Claims,3.0,Generated rows marked hallucinated=True
+Sample Hallucination Flag Rate,0.05084745762711865,Flagged hallucinations / generated claim rows
+Grounded Reference Rate,0.9491525423728814,Generated/context rows with concrete non-UNGROUNDED references
+Visual Grounding Rate,1.0,Visual rows with bbox/global source references
+Average Claim Confidence,0.820677966101695,Mean confidence over generated rows
+Precision,0.8846153846153846,"Offline sample audit, not clinical benchmark"
+Recall,0.7931034482758621,"Offline sample audit, not clinical benchmark"
+F1 Score,0.8363636363636363,"Offline sample audit, not clinical benchmark"
+Composite Score,0.4473542238007463,precision*recall - 5*hallucination_rate

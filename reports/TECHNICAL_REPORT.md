@@ -1,146 +1,258 @@
-# Technical Report: ClinicGuard ReportGen
+# ClinicGuard-ReportGen Technical Report
 
-ClinicGuard ReportGen is a research prototype for evidence-grounded chest X-ray report
-generation. Its goal is to make generated text auditable: each claim should either be
-supported by visual evidence, patient history, or a prior report, or the system should
-refuse/hedge the claim.
+**Generated:** 2026-06-12
+**Project type:** Evidence-grounded chest X-ray report generation prototype.
+**Clinical status:** Research and education only; not for diagnosis.
 
-This report describes the design and current runnable scope. It does not present the
-prototype as clinically validated.
+## 1. Problem Statement
 
-## 1. System Summary
+Medical report generation systems can produce fluent text that looks clinically plausible even when the claim is not supported by the image. In radiology, this is dangerous because an unsupported statement may become a false finding, a missed abnormality, or an incorrect impression. The core problem addressed by ClinicGuard-ReportGen is therefore not only generating a chest X-ray report, but generating a report whose claims can be traced, audited, and refused when evidence is weak.
 
-Automated medical report generation is risky when a model can produce fluent but
-unsupported clinical statements. ClinicGuard uses a constrained architecture:
+The project focuses on three practical issues:
 
-- a DenseNet121-style vision encoder for pathology confidence scores,
-- confidence thresholds for assertion, uncertainty, and refusal,
-- Grad-CAM visual grounding for reported visual findings,
-- template-based report construction,
-- post-generation claim checks,
-- CSV evidence logging for review.
+- Chest X-ray findings must be linked to model confidence scores and visual regions.
+- Low-confidence findings should be hedged or refused instead of being forced into a report.
+- Every generated claim should be captured in a claim-level evidence log for review.
 
-The design favors traceability and controlled language over free-form generation.
+## 2. Project Objectives
 
-## 2. Architecture
+| Objective | Implementation in Repository |
+| --- | --- |
+| Generate structured radiology-style reports | `src/report_templates.py` and `src/report_generator.py` build INDICATION, COMPARISON, FINDINGS, and IMPRESSION sections. |
+| Classify common chest X-ray findings | `src/vision_encoder.py` maps model outputs to 14 pathology labels. |
+| Ground findings to image regions | `src/grounding_module.py` generates Grad-CAM heatmaps and bounding-box references. |
+| Refuse unsupported claims | Confidence thresholds split outputs into asserted, hedged, negative, and refused decisions. |
+| Measure hallucination risk | `src/hallucination_detector.py` verifies generated claims against visual, history, and prior-report evidence. |
+| Provide reviewer-facing interface | `app.py` provides a Streamlit dashboard for upload, report generation, evidence logs, and metrics. |
+| Produce deliverable reports | `scripts/generate_report_artifacts.py` regenerates Markdown reports, PDFs, metrics, plots, and evidence logs. |
 
-```text
-Input X-ray
-    |
-    v
-Vision encoder -> pathology confidence scores
-    |
-    v
-Refusal / uncertainty gates
-    |
-    +--> Grad-CAM grounding for reportable findings
-    |
-    v
-Template report builder
-    |
-    v
-Claim verification + evidence log
-    |
-    v
-Generated report, grounding overlays, CSV audit trail
-```
+## 3. Dataset Used
 
-## 3. Vision Encoder
+The repository is designed for IU X-Ray style chest radiograph data and includes local sample cases for offline testing. It also documents access paths for protected datasets without bundling restricted data.
 
-The encoder uses a DenseNet121 backbone through `torchxrayvision` when available. The
-project maps model outputs to 14 common chest X-ray pathology labels:
+| Dataset / Source | Use in Project | Notes |
+| --- | --- | --- |
+| Local sample cases | Immediate offline dashboard and artifact testing | Stored under `data/sample_cases/`. |
+| IU X-Ray style data | Intended public report-generation benchmark path | `src/data_loader.py` attempts HuggingFace IU X-Ray loading and has a mock fallback. |
+| MIMIC-CXR / CheXpert weights | Used indirectly through torchxrayvision DenseNet weights when available | Model weights are for feature initialization, not proof of local clinical validation. |
+| MIMIC-CXR / PadChest datasets | Mentioned as protected evaluation targets | Require approval and local credentialed setup. |
 
-- Atelectasis
-- Cardiomegaly
-- Consolidation
-- Edema
-- Effusion
-- Emphysema
-- Fibrosis
-- Hernia
-- Infiltration
-- Mass
-- Nodule
-- Pleural thickening
-- Pneumonia
-- Pneumothorax
+The current report metrics are generated from an offline sample audit with 75 claim-level rows. These metrics demonstrate pipeline behavior and deliverable format; they are not claimed as a clinical benchmark.
 
-If `torchxrayvision` is unavailable, the code falls back to a torchvision DenseNet so
-the local pipeline remains inspectable, though that fallback should not be treated as a
-trained medical model.
+## 4. Data Preprocessing
 
-## 4. Refusal Gate
+The preprocessing path is implemented in `src/vision_encoder.preprocess_for_model` and the dataset utilities in `src/data_loader.py`.
 
-The report generator uses two thresholds:
+| Step | Details |
+| --- | --- |
+| Image conversion | Chest X-ray images are converted to grayscale. |
+| Resize | Images are resized to 224 x 224 pixels for DenseNet-style input. |
+| Intensity scaling | Pixel values are normalized then rescaled to the torchxrayvision style range. |
+| Channel handling | The grayscale image is repeated into 3 channels to match DenseNet input shape. |
+| Label extraction | Report text is parsed using pathology synonym dictionaries in `src/data_loader.py`. |
+| Split handling | Dataset loaders support train, validation, and test splits with deterministic fallback behavior. |
 
-- `evidence_threshold`: findings at or above this threshold can be asserted.
-- `uncertainty_threshold`: findings between this and the assertion threshold are written
-  with hedged language.
+The model input tensor shape is `(1, 3, 224, 224)` during single-image inference.
 
-Findings below the uncertainty threshold are omitted from the positive report path. This
-is the main control that prevents the generator from forcing a finding into the report
-when the model confidence is low.
+## 5. Exploratory Data Analysis
 
-## 5. Grounding
+EDA is included to show how claim coverage and pathology distribution are inspected before interpreting evaluation metrics. The offline sample audit covers the main chest X-ray findings used by the report generator.
 
-For reportable visual findings, the grounding module creates a Grad-CAM heatmap and
-extracts a bounding box from the strongest activation region. The evidence log stores
-that source reference as an image-region string when available.
+![EDA pathology distribution](assets/eda_pathology_distribution.png)
 
-Grad-CAM is useful for auditability, but it is not a substitute for radiologist-labeled
-segmentation or clinical validation.
+The EDA view helps answer:
 
-## 6. Claim Verification
+- Which pathologies appear most often in generated/audited claims?
+- Whether the sample audit covers high-risk findings such as pneumothorax, pneumonia, effusion, mass, and cardiomegaly.
+- Whether refusal behavior is present for low-confidence findings.
 
-The hallucination detector checks generated sentences against available evidence:
+## 6. Built-in Models and Baseline Architecture
+
+![ClinicGuard model pipeline flowchart](assets/model_pipeline_flowchart.png)
+
+| Component | Model / Method | Purpose |
+| --- | --- | --- |
+| Vision backbone | DenseNet121 through torchxrayvision when available | Extract chest X-ray visual features. |
+| Offline fallback | torchvision DenseNet121 | Keep the app and code path runnable when medical weights are unavailable. |
+| Classification head | Linear layer over DenseNet features | Predict 14 pathology probabilities. |
+| Grounding | Grad-CAM with fallback heatmaps | Produce heatmaps and bounding boxes for visual findings. |
+| Report generation | Template-based constrained generation | Avoid unsupported open-ended prose. |
+| Hallucination detector | Rule-based claim verification with synonym matching | Flag unsupported generated claims. |
+
+The 14 supported pathology labels are: Atelectasis, Cardiomegaly, Consolidation, Edema, Effusion, Emphysema, Fibrosis, Hernia, Infiltration, Mass, Nodule, Pleural Thickening, Pneumonia, Pneumothorax.
+
+## 7. Model Training Pipeline
+
+The training entry point is `scripts/train.py`; configuration values are centralized in `src/config.py`.
+
+| Training Setting | Default |
+| --- | ---: |
+| Batch size | 16 |
+| Learning rate | 1e-4 |
+| Weight decay | 1e-5 |
+| Epochs | 30 |
+| Early stopping patience | 5 |
+| Scheduler | Cosine |
+| Mixed precision | Enabled |
+| Checkpoint directory | `models/` |
+
+The intended training loop is:
+
+1. Load image/report pairs through `IUXRayDataset`.
+2. Extract labels from report text using pathology synonyms.
+3. Apply preprocessing and batching.
+4. Fine-tune the DenseNet-based classifier.
+5. Save the best checkpoint to `models/best_model.pt`.
+6. Use the checkpoint in the dashboard and inference script when present.
+
+If `models/best_model.pt` is absent, the dashboard explicitly falls back to demo mode instead of pretending a fine-tuned model exists.
+
+## 8. Report Generation and Refusal Logic
+
+The report generator uses confidence thresholds to decide how each finding should appear in the final report.
+
+| Gate | Default | Report Behavior |
+| --- | ---: | --- |
+| Assertion threshold | 0.75 | Finding is written as present. |
+| Uncertainty threshold | 0.50 | Finding is written with hedged language. |
+| Refusal region | < 0.50 | Finding is not asserted and is logged as refused. |
+
+This produces four audit decisions:
+
+- `asserted`: model confidence supports a positive finding.
+- `hedged`: confidence is not strong enough for certainty.
+- `negative`: report states the absence of a finding.
+- `refused`: the system avoids generating a weak finding.
+
+![Decision breakdown](assets/decision_breakdown.png)
+
+## 9. Interface and Dashboard
+
+The Streamlit interface in `app.py` is designed as a reviewer-facing dashboard. The left pane handles image upload, preview, and case status. The right pane shows generated report text, evidence visualization, evidence logs, metrics, and refused claims.
+
+![Dashboard overview from README](assets/readme_dashboard_1.png)
+
+![Report and evidence panel from README](assets/readme_dashboard_3.png)
+
+The dashboard supports:
+
+- Chest X-ray upload and preview.
+- Optional patient context and prior report input.
+- One-click report generation.
+- Confidence bars for top pathology probabilities.
+- Claim-level evidence table with source references.
+- Downloadable report text and evidence CSV.
+- Demo mode when the fine-tuned checkpoint is not available.
+
+## 10. Visual Grounding and Evidence Log
+
+Grounding is implemented in `src/grounding_module.py`. For each reportable finding, the module produces a heatmap and extracts a bounding box from the strongest activation region. The evidence log stores these references as strings such as `image_region_bbox:[92,132,276,336]`.
+
+![Evidence visualization from README](assets/readme_dashboard_4.png)
+
+The evidence log is the central audit artifact. It records:
+
+- sample ID,
+- generated claim,
+- source type,
+- source reference,
+- confidence score,
+- hallucination flag,
+- finding name,
+- audit decision,
+- verification note.
+
+![Evidence log table from README](assets/readme_dashboard_5.png)
+
+## 11. Hallucination Detection and Metrics
+
+The hallucination detector extracts claims from generated text and checks whether each claim is supported by:
 
 - visual confidence scores,
-- grounded regions,
-- patient history text,
+- image-region references,
+- patient history,
 - prior report text.
 
-The detector flags unsupported claims in the evidence log. This makes review easier, and
-it also gives the evaluator a direct way to compute sample-level hallucination flags.
+Unsupported positive claims are marked as `UNGROUNDED` and `hallucinated=True`.
 
-## 7. Current Data Support
+| Metric | Value |
+| --- | ---: |
+| Claim-level evidence rows | 75 |
+| Generated claim rows | 59 |
+| Refused / not generated rows | 16 |
+| Flagged hallucinations | 3 |
+| Sample hallucination flag rate | 5.1% |
+| Grounded reference rate | 94.9% |
+| Visual grounding rate | 100.0% |
+| Average generated-claim confidence | 82.1% |
+| Sample precision | 0.885 |
+| Sample recall | 0.793 |
+| Sample F1 | 0.836 |
+| Penalty-weighted composite score | 0.447 |
 
-The runnable public path focuses on IU X-Ray style data and bundled sample cases. MIMIC-CXR
-and PadChest require external credentialing or approval, so the repository provides access
-instructions and stubs rather than claiming automatic downloads.
+![Metrics dashboard](assets/metrics_dashboard.png)
 
-This is intentional: protected medical datasets should not be represented as available
-without the required approvals.
+![Confidence distribution](assets/confidence_distribution.png)
 
-## 8. Evaluation Artifacts
+The penalty-weighted score is:
 
-The repository includes a small sample evidence log for demonstration:
-
-- file: `reports/GROUNDING_EVIDENCE_LOG.csv`
-- rows: 10 claim-level entries
-- purpose: show the audit format and sample calculations
-
-To produce a fresh benchmark, run:
-
-```bash
-python scripts/evaluate.py --num-samples 10 --output-dir evaluation/
+```text
+Composite Score = (Precision * Recall) - (5 * Hallucination Rate)
 ```
 
-A larger benchmark should include per-sample inputs, labels, predictions, generated text,
-and claim-level evidence rows so the metrics can be independently inspected.
+The 5x penalty makes unsupported clinical assertions more costly than ordinary misses.
 
-## 9. Known Limitations
+## 12. Claim Audit Flow
 
-- The project is not clinically validated.
-- Demo fallback behavior can show simulated outputs when real model inference is not
-  available.
-- Protected datasets require manual setup and approvals.
-- Template-based generation is safer than unconstrained prose, but less expressive.
-- Grad-CAM boxes are approximate explanations, not ground-truth annotations.
+![Claim audit flowchart](assets/claim_audit_flowchart.png)
 
-## 10. Future Work
+The flow is:
 
-- Add reproducible per-sample benchmark exports.
-- Add stricter claim parsing for negation and anatomical location.
-- Add dataset adapters once protected datasets are available locally.
-- Add calibrated uncertainty estimates before assertion thresholds are trusted.
-- Add documentation for expected model checkpoints and output directories.
+1. Generate report text from confidence-gated templates.
+2. Extract clinical claims from report sections.
+3. Match claims to pathology synonyms.
+4. Check visual confidence and source references.
+5. Check patient history and prior report text.
+6. Mark the claim as grounded, hedged, refused, or hallucinated.
+7. Export the decision into `reports/GROUNDING_EVIDENCE_LOG.csv`.
+
+## 13. Reproducibility
+
+Run the dashboard:
+
+```bash
+streamlit run app.py
+```
+
+Regenerate report artifacts:
+
+```bash
+python scripts/generate_report_artifacts.py
+```
+
+Run the benchmark script when approved data and checkpoints are available:
+
+```bash
+python scripts/evaluate.py --num-samples 50 --output-dir evaluation/
+```
+
+## 14. Limitations and Future Work
+
+- The included metrics are an offline sample audit, not a clinical benchmark.
+- Protected datasets require manual approval and local setup.
+- Grad-CAM regions are explanatory approximations, not radiologist segmentation labels.
+- The app can fall back to demo mode if the fine-tuned checkpoint is not present.
+- Template-based generation is safer and more auditable than open-ended prose, but less expressive.
+- Future work should add real benchmark exports, calibration plots from approved datasets, and richer per-case PDF examples.
+
+## 15. Deliverable Map
+
+| File | Purpose |
+| --- | --- |
+| `reports/TECHNICAL_REPORT.md` | Full technical report source. |
+| `reports/TECHNICAL_REPORT.pdf` | PDF technical report with screenshots, diagrams, EDA, and plots. |
+| `reports/HALLUCINATION_ANALYSIS.md` | Hallucination/refusal analysis source. |
+| `reports/HALLUCINATION_ANALYSIS.pdf` | PDF hallucination report with metrics and plots. |
+| `reports/GROUNDING_EVIDENCE_LOG.csv` | Expanded claim-level evidence audit log. |
+| `evaluation/benchmark_results.csv` | Numeric sample-audit summary. |
+| `reports/assets/` | Dashboard screenshots, EDA plots, metrics plots, and flowcharts. |
